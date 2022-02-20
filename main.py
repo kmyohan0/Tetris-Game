@@ -1,12 +1,18 @@
 import pygame
 import random
+import pandas as pd
 
 """
 10 x 20 square grid
 shapes: S, Z, I, O, J, L, T
 represented in order by 0 - 6
 """
-
+record_storage = {
+    "Time": [],
+    "Block": [],
+    "Action": [],
+    "Score": []
+}
 pygame.font.init()
 
 # GLOBALS VARS
@@ -125,6 +131,7 @@ T = [['.....',
       '.....']]
 
 shapes = [S, Z, I, O, J, L, T]
+shapes_name = ['S', 'Z', 'I', 'O', 'J', 'L', 'T']
 shape_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0), (255, 165, 0), (0, 0, 255), (128, 0, 128)]
 # index 0 - 6 represent shape
 
@@ -138,6 +145,7 @@ class Piece(object):
         self.y = row
         self.shape = shape
         self.color = shape_colors[shapes.index(shape)]
+        self.letter = shapes_name[shapes.index(shape)]
         self.rotation = 0  # number from 0-3
 
 
@@ -213,11 +221,15 @@ def draw_grid(surface, row, col):
 
 def clear_rows(grid, locked):
     # need to see if row is clear the shift every other row above down one
-
     inc = 0
     for i in range(len(grid)-1,-1,-1):
         row = grid[i]
         if (0, 0, 0) not in row:
+            score += 10
+            record_storage['Time'].append(pygame.time.get_time())
+            record_storage['Block'].append(get_shape())
+            record_storage['Action'].append(event.type)
+            record_storage['Score'].append(score)
             inc += 1
             # add positions to remove from locked
             ind = i
@@ -268,6 +280,18 @@ def draw_window(surface):
     pygame.draw.rect(surface, (255, 0, 0), (top_left_x, top_left_y, play_width, play_height), 5)
     # pygame.display.update()
 
+def update_record(isEnd, event, score):
+    if isEnd:
+        record_storage['Time'].append(pygame.time.get_ticks())
+        record_storage['Block'].append('END')
+        record_storage['Action'].append(999)
+        record_storage['Score'].append(score)
+    else:
+        record_storage['Time'].append(pygame.time.get_ticks())
+        record_storage['Block'].append(get_shape().letter)
+        record_storage['Action'].append(event.type)
+        record_storage['Score'].append(score)
+
 
 def main():
     global grid
@@ -309,6 +333,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                update_record(True, event, score)
                 pygame.display.quit()
                 quit()
 
@@ -317,28 +342,32 @@ def main():
                     current_piece.x -= 1
                     if not valid_space(current_piece, grid):
                         current_piece.x += 1
+                    update_record(False, event, score)
 
                 elif event.key == pygame.K_RIGHT:
                     current_piece.x += 1
                     if not valid_space(current_piece, grid):
                         current_piece.x -= 1
+                    update_record(False, event, score)
                 elif event.key == pygame.K_UP:
                     # rotate shape
                     current_piece.rotation = current_piece.rotation + 1 % len(current_piece.shape)
                     if not valid_space(current_piece, grid):
                         current_piece.rotation = current_piece.rotation - 1 % len(current_piece.shape)
+                    update_record(False, event, score)
 
                 if event.key == pygame.K_DOWN:
                     # move shape down
                     current_piece.y += 1
                     if not valid_space(current_piece, grid):
                         current_piece.y -= 1
+                    update_record(False, event, score)
 
-                '''if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_SPACE:
                     while valid_space(current_piece, grid):
                         current_piece.y += 1
                     current_piece.y -= 1
-                    print(convert_shape_format(current_piece))'''  # todo fix
+                    update_record(False, event, score)
 
         shape_pos = convert_shape_format(current_piece)
 
@@ -359,7 +388,7 @@ def main():
 
             # call four times to check for multiple clear rows
             if clear_rows(grid, locked_positions):
-                score += 10
+                print(score)
 
         draw_window(win)
         draw_next_shape(next_piece, win)
@@ -369,9 +398,13 @@ def main():
         if check_lost(locked_positions):
             run = False
 
-    draw_text_middle("You Lost", 40, (255,255,255), win)
+    draw_text_middle("You Lost. You can exit program now.", 40, (255,255,255), win)
+    update_record(True, event=000, score=score)
+    output = pd.DataFrame.from_dict(record_storage)
+    output.to_csv("output.csv", index=False)
     pygame.display.update()
     pygame.time.delay(2000)
+    run = False
 
 
 def main_menu():
@@ -385,6 +418,7 @@ def main_menu():
                 run = False
 
             if event.type == pygame.KEYDOWN:
+                update_record(False, event=event, score=0)
                 main()
     pygame.quit()
 

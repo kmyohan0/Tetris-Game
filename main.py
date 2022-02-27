@@ -25,7 +25,6 @@ block_size = 30
 top_left_x = (s_width - play_width) // 2
 top_left_y = s_height - play_height
 
-
 # SHAPE FORMATS
 
 S = [['.....',
@@ -219,15 +218,15 @@ def draw_grid(surface, row, col):
             pygame.draw.line(surface, (128,128,128), (sx + j * 30, sy), (sx + j * 30, sy + play_height))  # vertical lines
 
 
-def clear_rows(grid, locked):
+def clear_rows(grid, locked, score, event):
     # need to see if row is clear the shift every other row above down one
     inc = 0
     for i in range(len(grid)-1,-1,-1):
         row = grid[i]
         if (0, 0, 0) not in row:
             score += 10
-            record_storage['Time'].append(pygame.time.get_time())
-            record_storage['Block'].append(get_shape())
+            record_storage['Time'].append(pygame.time.get_ticks())
+            record_storage['Block'].append(get_shape().letter)
             record_storage['Action'].append(event.type)
             record_storage['Score'].append(score)
             inc += 1
@@ -307,6 +306,7 @@ def main():
     fall_time = 0
     level_time = 0
     fall_speed = 0.27
+    global score
     score = 0
     
     while run:
@@ -387,7 +387,7 @@ def main():
             change_piece = False
 
             # call four times to check for multiple clear rows
-            if clear_rows(grid, locked_positions):
+            if clear_rows(grid, locked_positions, score, event):
                 print(score)
 
         draw_window(win)
